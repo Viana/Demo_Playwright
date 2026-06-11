@@ -7,9 +7,20 @@ const data = require('../support/fixtures/users.json')
 test.describe('Registro de usuário', () => {
     let register: Register
 
+    // API de Limpeza de dados
+    test.beforeAll(async ({request}) => {
+        const resp = await request.post('https://parabank.parasoft.com/parabank/db.htm', {
+            params: {
+                action: 'clean'
+            }
+        })
+        expect(resp.ok()).toBeTruthy()
+    })
+
     test.beforeEach(async ({page}) => {
         const elements = new Elements(page)
         register = new Register(page, elements)
+
         await register.visit()
     })
 
@@ -21,8 +32,33 @@ test.describe('Registro de usuário', () => {
         expect(await register.getTitleLocator()).toEqual(msgSucesso)
     })
 
-    test('deve validar usuário já cadastrado', async ({page}) => {
-        const user: Registro = data.create
+    test('deve validar usuário já cadastrado', async ({page, request}) => {
+        const user: Registro = data.valida_user_cadastrado
+
+        // Cadastrando user via API pra depois ser cadastrado o mesmo pela tela
+        const response = await request.post('https://parabank.parasoft.com/parabank/register.htm', {
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'Cookie': 'JSESSIONID=275612449FA9D3633B0F3B1F7E7D17CE',
+            },
+            form: {
+                'customer.firstName': user.firstName,
+                'customer.lastName': user.lastName,
+                'customer.address.street': user.address,
+                'customer.address.city': user.city,
+                'customer.address.state': user.state,
+                'customer.address.zipCode': user.zipCode,
+                'customer.phoneNumber': user.phone,
+                'customer.ssn': user.ssn,
+                'customer.username': user.userName,
+                'customer.password': user.password,
+                'repeatedPassword': user.confirm
+            },
+        });
+
+        expect(response.ok()).toBeTruthy()
+
+        // const user: Registro = data.create
         await register.fillRegister(user)
         await register.clickRegister()
         const msgErr = await register.getSpanError("Username:")
