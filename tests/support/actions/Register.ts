@@ -1,4 +1,4 @@
-import {test, expect, type Page} from '@playwright/test'
+import {expect, type Page} from '@playwright/test'
 import {Elements} from "../components/Elements";
 
 export class Register {

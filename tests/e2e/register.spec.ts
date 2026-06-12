@@ -1,30 +1,20 @@
-import {expect, test} from '@playwright/test'
-import {Register, Registro} from "../support/actions/Register"
-import {Elements} from "../support/components/Elements";
+import {expect} from '@playwright/test'
+import {context as test, Registro} from '../support'
 
 const data = require('../support/fixtures/users.json')
 
 test.describe('Registro de usuário', () => {
-    let register: Register
-
     // API de Limpeza de dados
-    test.beforeAll(async ({request}) => {
-        const resp = await request.post('https://parabank.parasoft.com/parabank/db.htm', {
-            params: {
-                action: 'clean'
-            }
-        })
-        expect(resp.ok()).toBeTruthy()
+    test.beforeAll(async ({api}) => {
+        const response = await api.cleanData()
+        expect(response.ok()).toBeTruthy()
     })
 
-    test.beforeEach(async ({page}) => {
-        const elements = new Elements(page)
-        register = new Register(page, elements)
-
+    test.beforeEach(async ({register}) => {
         await register.visit()
     })
 
-    test('deve registrar usuário com sucesso', async ({page}) => {
+    test('deve registrar usuário com sucesso', async ({register}) => {
         const user: Registro = data.create
         await register.fillRegister(user)
         await register.clickRegister()
@@ -32,33 +22,10 @@ test.describe('Registro de usuário', () => {
         expect(await register.getTitleLocator()).toEqual(msgSucesso)
     })
 
-    test('deve validar usuário já cadastrado', async ({page, request}) => {
+    test('deve validar usuário já cadastrado', async ({register, api}) => {
         const user: Registro = data.valida_user_cadastrado
-
-        // Cadastrando user via API pra depois ser cadastrado o mesmo pela tela
-        const response = await request.post('https://parabank.parasoft.com/parabank/register.htm', {
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-                'Cookie': 'JSESSIONID=275612449FA9D3633B0F3B1F7E7D17CE',
-            },
-            form: {
-                'customer.firstName': user.firstName,
-                'customer.lastName': user.lastName,
-                'customer.address.street': user.address,
-                'customer.address.city': user.city,
-                'customer.address.state': user.state,
-                'customer.address.zipCode': user.zipCode,
-                'customer.phoneNumber': user.phone,
-                'customer.ssn': user.ssn,
-                'customer.username': user.userName,
-                'customer.password': user.password,
-                'repeatedPassword': user.confirm
-            },
-        });
-
+        const response = await api.registerUser(user)
         expect(response.ok()).toBeTruthy()
-
-        // const user: Registro = data.create
         await register.fillRegister(user)
         await register.clickRegister()
         const msgErr = await register.getSpanError("Username:")
@@ -66,7 +33,7 @@ test.describe('Registro de usuário', () => {
         expect(msgErr).toEqual("This username already exists.")
     })
 
-    test('deve validar os campos obrigatórios', async ({page}) => {
+    test('deve validar os campos obrigatórios', async ({register}) => {
         await register.clickRegister()
         const labels: string[] = [
             "First Name:", "Last Name:", "Address:", "City:", "State:",
@@ -85,7 +52,7 @@ test.describe('Registro de usuário', () => {
     ];
 
     labels.forEach((label, index) => {
-        test(`deve validar o campo obrigatório: ${label}`, async ({page}) => {
+        test(`deve validar o campo obrigatório: ${label}`, async ({register}) => {
             // ✅ acesso dinâmico de propriedade
             const user: Registro = data[`valida_campo_required_${index}`]
             await register.fillRegister(user)
@@ -108,7 +75,7 @@ test.describe('Registro de usuário', () => {
         })
     })
 
-    test('deve validar campo passwords tem o mesmo valor', async ({page}) => {
+    test('deve validar campo passwords tem o mesmo valor', async ({register}) => {
         const user: Registro = data.valida_campo_password
         await register.fillRegister(user)
         await register.clickRegister()
